@@ -12,12 +12,18 @@ class Environment():
         self.current_room = self.lab.start_room
         self.done = False
         self.last_room = None
+        self.truncated = False
 
     def reset(self):
         self.__init__()
 
     def step(self):
         self.generate_action_space()
+
+        #check for valid actions
+        if self.dynamic_action_space[0] is None & self.dynamic_action_space[1] is None & len(self.dynamic_action_space) < 2:
+            self.truncated = True
+
         action, subaction = self.agent.select_action(self.dynamic_action_space)
         self.history.append([self.last_room, action, subaction])
 

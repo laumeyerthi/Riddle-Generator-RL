@@ -9,7 +9,7 @@ def main():
     while not my_env.done:
         my_env.step()
         count += 1
-        if count == max_iterations:
+        if count == max_iterations or my_env.truncated is True:
             print(f"No solution for \n {my_env.lab.room_trans_matrix} \n found")
             my_env.reset()
             count = 0
