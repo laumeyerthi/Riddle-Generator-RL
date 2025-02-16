@@ -15,17 +15,19 @@ class LabGenerator:
         self.button2door_behavior_matrix = None
         self.valid_layout = False
         self.number_of_buttons = np.random.randint(self.number_of_rooms)
+        self.generate_lab()
 
     def generate_rooms(self):
         # Generate matrix with random 0 and 1 with size num_rooms
-        self.room_trans_matrix = np.random.randint(0, 2, size=(self.number_of_rooms, self.number_of_rooms))
+        rooms = np.random.randint(0, 2, size=(self.number_of_rooms, self.number_of_rooms))
         # make sure each room is connected with itself
         for i in range(self.number_of_rooms):
-            self.room_trans_matrix[i][i] = 1
+            rooms[i][i] = 1
         # make it symentric to make sure transitions go both ways
-        np.triu(self.room_trans_matrix)
-        self.room_trans_matrix += self.room_trans_matrix.T - np.diag(self.room_trans_matrix.diagonal())
-        self.room_trans_matrix[self.room_trans_matrix > 1] = 1
+        np.triu(rooms)
+        rooms += rooms.T - np.diag(rooms.diagonal())
+        rooms[rooms > 1] = 1
+        return rooms
 
     def sanity_check(self):
         """
@@ -82,7 +84,7 @@ class LabGenerator:
 
     def generate_lab(self):
         while self.valid_layout:
-            self.generate_rooms()
+            self.room_trans_matrix = self.generate_rooms()
             self.valid_layout = self.sanity_check()
         self.generate_door_states()
         self.generate_button_locations()

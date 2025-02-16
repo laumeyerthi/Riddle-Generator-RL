@@ -1,20 +1,25 @@
 import numpy as np
-from lab_generator import LabGenerator
-from lab_generator import agent
+from .lab_generator import LabGenerator
+from .agent import Agent
 
 
 class Environment():
-    def __init__(self, lab=LabGenerator(), agent=agent()):
-        self.lab = lab
-        self.agent = agent
+    def __init__(self):
+        self.lab = LabGenerator()
+        self.agent = Agent()
         self.dynamic_action_space = None
         self.history = []
         self.current_room = self.lab.start_room
         self.done = False
         self.last_room = None
 
+    def reset(self):
+        self.__init__()
+
     def step(self):
+        self.generate_action_space()
         action, subaction = self.agent.select_action(self.dynamic_action_space)
+        self.history.append([self.last_room, action, subaction])
 
         # press button
         if action == 0:
@@ -35,8 +40,10 @@ class Environment():
     def generate_action_space(self):
         # delete past action space
         self.dynamic_action_space = []
+
         # get the indices of the buttons in the current room
         self.dynamic_action_space.append([np.where(self.lab.button_location_matrix[self.current_room] == 1)[0].tolist()])
+
         #get the indices of the possible room transtions in the current room
         room_transitions = np.where(self.lab.door_state_matrix[self.current_room] == 1)[0]
         # remove the current room
