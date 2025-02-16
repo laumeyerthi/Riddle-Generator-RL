@@ -69,7 +69,16 @@ class LabGenerator:
         self.button_location_matrix = np.random.randint(0, 2, size=(self.number_of_rooms, self.number_of_buttons))
 
     def generate_button2door_behavior(self):
-        self.button2door_behavior_matrix = self.generate_button_locations()
+        # create a button behavior matrix for each button in a stacked matrix
+        self.button2door_behavior_matrix = np.array([self.generate_single_button_matrix() for _ in range(self.number_of_buttons)])
+
+    def generate_single_button_matrix(self):
+        # create room x room matrix that shows which doors to toogle for one button
+        single_button_matrix = np.random.randint(0, 2, size=(self.number_of_rooms, self.number_of_rooms))
+        # cut in half for door transition in both ways
+        single_button_matrix = np.triu(single_button_matrix, 1)
+        # set diagonal to zero as there are no doors that lead to the same room they are in
+        single_button_matrix += single_button_matrix.T
 
     def generate_lab(self):
         while self.valid_layout:

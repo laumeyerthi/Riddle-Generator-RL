@@ -1,9 +1,9 @@
-from lab_generator import LabGenerator
 import numpy as np
+from lab_generator import LabGenerator
 
 
 class Environment():
-    def __init__(self, lab, agent):
+    def __init__(self, lab=LabGenerator(), agent=None):
         self.lab = lab
         self.agent = agent
         self.dynamic_action_space = None
@@ -54,12 +54,9 @@ class Environment():
             return False
         
     def press_button(self, button):
-        # which doors have to change
-        door_indices = np.where((self.lab.button2door_behavior_matrix[button] == 1)[0] & (np.arange(self.lab.button2door_behavior_matrix.shape[0]) != button))[0]
-        # remove doors that are not connected to another room
-        door_indices = door_indices[self.lab.room_trans_matrix[door_indices, button] != 0]
-        # switch the door states
-        self.lab.door_state_matrix[door_indices, button] = 1 - self.lab.door_state_matrix[door_indices, button]
+        button_behavior = self.lab.button2door_behavior_matrix[button]
+        # change the doors where the button controls it and a transition is possible due to room_trans_matrix
+        self.lab.door_state_matrix[(button_behavior == 1) & (self.lab.room_trans_matrix == 1)] ^= 1
         
 
     def move(self, door):
