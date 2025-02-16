@@ -1,9 +1,10 @@
 import numpy as np
 from lab_generator import LabGenerator
+from lab_generator import agent
 
 
 class Environment():
-    def __init__(self, lab=LabGenerator(), agent=None):
+    def __init__(self, lab=LabGenerator(), agent=agent()):
         self.lab = lab
         self.agent = agent
         self.dynamic_action_space = None
@@ -12,8 +13,8 @@ class Environment():
         self.done = False
         self.last_room = None
 
-    def step(self, action, subaction):
-        action, subaction = self.agent.get_action()
+    def step(self):
+        action, subaction = self.agent.select_action(self.dynamic_action_space)
 
         # press button
         if action == 0:
