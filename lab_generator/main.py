@@ -13,7 +13,22 @@ def main():
             print(f"No solution for \n {my_env.lab.room_trans_matrix} \n found")
             my_env.reset()
             count = 0
-    print(f"No solution for \n {my_env.lab.room_trans_matrix} \n found! \n History: \n {my_env.history}")
+    print(f"""Solution for room_trans_matrix: 
+    {my_env.lab.room_trans_matrix}
+
+    button_location_matrix: 
+    {my_env.lab.button_location_matrix}
+
+    button2door_behavior_matrix: 
+    {my_env.lab.button2door_behavior_matrix}
+
+    Found! 
+
+    History [Last room, action, subaction]: 
+    {my_env.history}
+    """)
+
+
         
 
 

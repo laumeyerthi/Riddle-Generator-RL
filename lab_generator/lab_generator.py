@@ -83,7 +83,7 @@ class LabGenerator:
         single_button_matrix += single_button_matrix.T
 
     def generate_lab(self):
-        while self.valid_layout:
+        while not self.valid_layout:
             self.room_trans_matrix = self.generate_rooms()
             self.valid_layout = self.sanity_check()
         self.generate_door_states()

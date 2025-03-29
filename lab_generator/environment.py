@@ -19,12 +19,17 @@ class Environment():
 
     def step(self):
         self.generate_action_space()
+        print("Agent Positon: ", self.current_room)
+        print("Last room: ", self.last_room)
+        print("Goal Room: ", self.lab.goal_room)
+        print("Current Action Space: ", self.dynamic_action_space)
 
         #check for valid actions
-        if self.dynamic_action_space[0] is None & self.dynamic_action_space[1] is None & len(self.dynamic_action_space) < 2:
+        if self.dynamic_action_space[0] is None and self.dynamic_action_space[1] is None and len(self.dynamic_action_space) < 2:
             self.truncated = True
 
         action, subaction = self.agent.select_action(self.dynamic_action_space)
+        print("Taking action and subaction: ", action, subaction)
         self.history.append([self.last_room, action, subaction])
 
         # press button
@@ -48,14 +53,14 @@ class Environment():
         self.dynamic_action_space = []
 
         # get the indices of the buttons in the current room
-        self.dynamic_action_space.append([np.where(self.lab.button_location_matrix[self.current_room] == 1)[0].tolist()])
+        self.dynamic_action_space.append(np.where(self.lab.button_location_matrix[self.current_room] == 1)[0].tolist())
 
         #get the indices of the possible room transtions in the current room
         room_transitions = np.where(self.lab.door_state_matrix[self.current_room] == 1)[0]
         # remove the current room
         room_transitions = room_transitions[room_transitions != self.current_room]
         # append to possible move throu door actions to the action space
-        self.dynamic_action_space.append([room_transitions.tolist()])
+        self.dynamic_action_space.append(room_transitions.tolist())
         # append the backtrack action
         if self.last_room is not None:
             self.dynamic_action_space.append([self.backtrack])
