@@ -25,8 +25,8 @@ class LabEnv(gym.Env):
             "goal_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
             # Door states: 1 = Open, 0 = Closed/Wall
             "door_states": spaces.Box(0, 1, shape=(self.num_rooms, self.num_rooms), dtype=int),
-            "button_locations": spaces.Box(0, 1, shape=( self.lab.number_of_buttons, self.num_rooms, self.num_rooms), dtype=int) 
-            "last_pos": None
+            "button_locations": spaces.Box(0, 1, shape=( self.lab.number_of_buttons, self.num_rooms, self.num_rooms), dtype=int),
+            "last_pos": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int)
         })
         
         self.render_mode = render_mode
@@ -44,7 +44,7 @@ class LabEnv(gym.Env):
         start_idx = self.lab.start_room
         agent_r, agent_c = self.lab.index_to_coord(start_idx)
         self.agent_location = np.array([agent_r, agent_c])
-        self.last_pos = None
+        self.last_pos = np.array([-1, -1])
         
         return self._get_obs(), {}
 
