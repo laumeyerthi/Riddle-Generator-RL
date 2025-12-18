@@ -15,9 +15,9 @@ class LabEnv(gym.Env):
         self.lab = LabGenerator(number_of_rooms=self.num_rooms)
         self.grid_size = self.lab.grid_size
         
-        # Actions: 0:Right, 1:Up, 2:Left, 3:Down, 4..:Buttons
+        # Actions: 0:Right, 1:Up, 2:Left, 3:Down, 4:Backtrack, 5..:Buttons
         # Button count is fixed to number_of_rooms as per LabGenerator logic
-        self.action_space = spaces.Discrete(4 + self.lab.number_of_buttons)
+        self.action_space = spaces.Discrete(5 + self.lab.number_of_buttons)
         
         # Observations
         self.observation_space = spaces.Dict({
@@ -26,6 +26,7 @@ class LabEnv(gym.Env):
             # Door states: 1 = Open, 0 = Closed/Wall
             "door_states": spaces.Box(0, 1, shape=(self.num_rooms, self.num_rooms), dtype=int),
             "button_locations": spaces.Box(0, 1, shape=( self.lab.number_of_buttons, self.num_rooms, self.num_rooms), dtype=int) 
+            "last_pos": None
         })
         
         self.render_mode = render_mode
@@ -35,7 +36,6 @@ class LabEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         # Note: LabGenerator uses numpy.random global state.
-        # TODO change lab generator to use gymnasium's seeding mechanism
         
         self.lab.generate_lab()
         #TODO also set new goal and start room
@@ -44,42 +44,49 @@ class LabEnv(gym.Env):
         start_idx = self.lab.start_room
         agent_r, agent_c = self.lab.index_to_coord(start_idx)
         self.agent_location = np.array([agent_r, agent_c])
+        self.last_pos = None
         
         return self._get_obs(), {}
 
     def step(self, action):
-        reward = 0
+        reward = -1
         terminated = False
         truncated = False
         
         current_r, current_c = self.agent_location
         current_idx = self.lab.coord_to_index(current_r, current_c)
         
-        if action < 4: # Move
+        if action < 5: # Move
             # Calc new pos
             new_r, new_c = current_r, current_c
             if action == 0: new_c += 1 # Right
             elif action == 1: new_r -= 1 # Up
             elif action == 2: new_c -= 1 # Left
             elif action == 3: new_r += 1 # Down
+            elif action == 4: # Backtrack
+                if self.last_pos[0] != -1: # Only valid if last_pos is set
+                    new_r, new_c = self.last_pos
             
             # Check bounds
             if 0 <= new_r < self.grid_size and 0 <= new_c < self.grid_size:
                 target_idx = self.lab.coord_to_index(new_r, new_c)
                 
                 # Check if door connects and is open
+                # Note: door_state_matrix[source, target] == 1 means open connection
                 if self.lab.door_state_matrix[current_idx, target_idx] == 1:
+                    # Move successful
+                    self.last_pos = self.agent_location.copy()
                     self.agent_location = np.array([new_r, new_c])
                     
                     # Check Goal
                     if target_idx == self.lab.goal_room:
                         terminated = True
-                        reward = 1.0
+                        reward = 10.0
                 else:
-                    # Blocked
+                    # Blocked (Wall or Closed Door)
                     pass
         else: # Button
-            btn_idx = action - 4
+            btn_idx = action - 5
             # Check if button exists in current room
             if btn_idx < self.lab.number_of_buttons:
                 if self.lab.button_location_matrix[current_idx, btn_idx] == 1:
@@ -104,5 +111,6 @@ class LabEnv(gym.Env):
             "agent_location": self.agent_location,
             "goal_location": np.array([goal_r, goal_c], dtype=int),
             "door_states": self.lab.door_state_matrix.copy().astype(int),
-            "button_locations": self.lab.button_location_matrix.copy().astype(int)
+            "button_locations": self.lab.button_location_matrix.copy().astype(int),
+            "last_pos": self.last_pos
         }
