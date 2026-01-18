@@ -32,6 +32,7 @@ class LabEnv(gym.Env):
         self.render_mode = render_mode
         agent_r, agent_c = self.lab.index_to_coord(self.lab.start_room)
         self.agent_location = np.array([agent_r, agent_c])
+        self.steps = 0
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -45,6 +46,7 @@ class LabEnv(gym.Env):
         agent_r, agent_c = self.lab.index_to_coord(start_idx)
         self.agent_location = np.array([agent_r, agent_c])
         self.last_pos = np.array([-1, -1])
+        self.steps = 0
         
         return self._get_obs(), {}
 
@@ -52,6 +54,12 @@ class LabEnv(gym.Env):
         reward = -1
         terminated = False
         truncated = False
+        self.steps += 1
+        if(self.steps >100):
+            truncated = True
+            reward = -100
+            pass
+            
         
         current_r, current_c = self.agent_location
         current_idx = self.lab.coord_to_index(current_r, current_c)
