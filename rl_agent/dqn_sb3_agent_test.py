@@ -27,7 +27,7 @@ def train():
     )
     
     print("Starting Training...")
-    model.learn(total_timesteps=500000,progress_bar=True)
+    model.learn(total_timesteps=100000,progress_bar=True)
     
     print("Saving Model...")
     model.save("dqn_lab_env")
