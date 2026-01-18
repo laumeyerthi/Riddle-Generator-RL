@@ -11,8 +11,8 @@ from gymnasium_env.envs.lab_env import LabEnv
 def train():
     print("Initializing Environment...")
     base_env = LabEnv(number_of_rooms=4)
-    env = FlattenObservation(base_env)
-    
+    #env = FlattenObservation(base_env)
+    env = base_env
     print("Observation Space:", env.observation_space)
     print("Action Space:", env.action_space)
 
@@ -20,14 +20,14 @@ def train():
     print("Initializing DQN Model...")
     # Instantiate the agent
     model = DQN(
-        "MlpPolicy", 
+        "MultiInputPolicy", 
         env, 
-        verbose=1,
+        verbose=0, 
         tensorboard_log="tmp/logs/dqn_sb3_agent/"
     )
     
     print("Starting Training...")
-    model.learn(total_timesteps=100)
+    model.learn(total_timesteps=500000,progress_bar=True)
     
     print("Saving Model...")
     model.save("dqn_lab_env")

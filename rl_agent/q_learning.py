@@ -66,10 +66,6 @@ class EpsilonGreedyPolicy(TabularMixin, Model):
         if states.dtype != torch.long:
             states = states.long()
 
-        # Get Q-values for current states
-        # q_table shape: [num_envs, num_states, num_actions]
-        # We need to select [batch_indices, state_indices]
-        # view(-1, 1) ensures correct broadcasting/indexing
         
         batch_size = states.shape[0]
         env_indices = torch.arange(batch_size, device=self.device)
@@ -95,7 +91,6 @@ class EpsilonGreedyPolicy(TabularMixin, Model):
         return actions, {}
 
 # 1. Instantiate the environment
-# We use the class directly to avoid registration issues if not installed
 base_env = LabEnv(number_of_rooms=4) # Smaller room count for tabular feasibility? Default is 4.
 
 # 2. Wrap the environment

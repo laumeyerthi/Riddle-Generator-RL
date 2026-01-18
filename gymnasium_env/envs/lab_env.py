@@ -25,7 +25,7 @@ class LabEnv(gym.Env):
             "goal_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
             # Door states: 1 = Open, 0 = Closed/Wall
             "door_states": spaces.Box(0, 1, shape=(self.num_rooms, self.num_rooms), dtype=int),
-            "button_locations": spaces.Box(0, 1, shape=( self.lab.number_of_buttons, self.num_rooms, self.num_rooms), dtype=int),
+            "button_locations": spaces.Box(0, 1, shape=(self.num_rooms, self.lab.number_of_buttons), dtype=int),
             "last_pos": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int)
         })
         
@@ -71,9 +71,11 @@ class LabEnv(gym.Env):
             if 0 <= new_r < self.grid_size and 0 <= new_c < self.grid_size:
                 target_idx = self.lab.coord_to_index(new_r, new_c)
                 
-                # Check if door connects and is open
-                # Note: door_state_matrix[source, target] == 1 means open connection
-                if self.lab.door_state_matrix[current_idx, target_idx] == 1:
+                # Check if door connects and is open (unless backtracking)
+                is_open = self.lab.door_state_matrix[current_idx, target_idx] == 1
+                is_backtrack = (action == 4)
+                
+                if is_open or is_backtrack:
                     # Move successful
                     self.last_pos = self.agent_location.copy()
                     self.agent_location = np.array([new_r, new_c])

@@ -54,20 +54,33 @@ class LabGenerator:
     def sanity_check(self):
         """
         Check if there is a path from start room to goal room in the labyrinth.
+        Matrix: Transition matrix (numpy array)
+        start: Index of the starting room (0-based)
+        goal: Index of the goal room (0-based)
         """
+        # Create a queue for BFS and a set to track visited rooms
         queue = deque([self.start_room])
         visited = set()
         
         while queue:
             current = queue.popleft()
+            
+            # If we reached the goal room
             if current == self.goal_room:
                 return True
+            
+            # Skip if already visited
             if current in visited:
                 continue
+            
             visited.add(current)
+            
+            # Check all connected rooms
             for neighbor in range(self.number_of_rooms):
                 if self.room_trans_matrix[current, neighbor] == 1 and neighbor not in visited:
                     queue.append(neighbor)
+        
+        # If BFS finishes without finding the goal room
         return False
 
     def generate_door_states(self):
@@ -100,13 +113,88 @@ class LabGenerator:
         np.fill_diagonal(single_button_matrix, 0)
         return single_button_matrix
 
+    def is_fully_solvable(self):
+        """
+        Performs a full state-space BFS to check if the goal is reachable
+        considering walls, doors, buttons, AND backtracking.
+        State: (current_room_idx, button_toggle_mask, last_room_idx)
+        """
+        # Initial state: Start room, no buttons toggled (mask=0), last_room = -1 (none)
+        start_state = (self.start_room, 0, -1)
+        
+        queue = deque([start_state])
+        visited = {start_state}
+        
+        initial_doors = self.door_state_matrix.astype(int)
+        
+        while queue:
+            curr_room, curr_mask, last_room = queue.popleft()
+            
+            if curr_room == self.goal_room:
+                return True
+            
+            # 1. Try Pressing Buttons in current room
+            # Get buttons available in current room
+            available_buttons = np.where(self.button_location_matrix[curr_room] == 1)[0]
+            
+            for btn_idx in available_buttons:
+                new_mask = curr_mask ^ (1 << btn_idx) # Toggle bit
+                next_state = (curr_room, new_mask, last_room)
+                if next_state not in visited:
+                    visited.add(next_state)
+                    queue.append(next_state)
+
+            # 2. Try Backtracking (always valid if last_room is not -1)
+            if last_room != -1:
+                # Backtrack takes us to last_room. New last_room becomes curr_room.
+                backtrack_state = (last_room, curr_mask, curr_room)
+                if backtrack_state not in visited:
+                    visited.add(backtrack_state)
+                    queue.append(backtrack_state)
+
+            # 3. Try Moving (Normal)
+            # We need to know which doors are open in the current configuration
+            
+            # Start with initial state of doors for current room
+            curr_doors_row = initial_doors[curr_room].copy()
+            
+            # Apply toggles
+            for btn_idx in range(self.number_of_buttons):
+                if (curr_mask >> btn_idx) & 1: # if button Toggled
+                    behavior_row = self.button2door_behavior_matrix[btn_idx][curr_room]
+                    curr_doors_row = np.bitwise_xor(curr_doors_row, behavior_row)
+            
+            # Ensure walls are respected
+            valid_neighbors = np.where((curr_doors_row == 1) & (self.room_trans_matrix[curr_room] == 1))[0]
+            
+            for neighbor in valid_neighbors:
+                next_state = (neighbor, curr_mask, curr_room)
+                if next_state not in visited:
+                    visited.add(next_state)
+                    queue.append(next_state)
+                    
+        return False
+
     def generate_lab(self):
-        while not self.valid_layout:
+        attempts = 0
+        while True:
+            attempts += 1
+            # 1. Generate Layout
             self.room_trans_matrix = self.generate_rooms()
-            self.valid_layout = self.sanity_check()
-        self.generate_door_states()
-        self.generate_button_locations()
-        self.generate_button2door_behavior()
+            
+            # 2. Fast Fail: Check basic connectivity (Walls only)
+            if not self.sanity_check():
+                continue
+                
+            # 3. Generate Details
+            self.generate_door_states()
+            self.generate_button_locations()
+            self.generate_button2door_behavior()
+            
+            # 4. Full Validation: Check if actually solvable with keys/doors
+            if self.is_fully_solvable():
+                # print(f"Generated solvable lab after {attempts} attempts")
+                break
 
     def coord_to_index(self, r, c):
         return r * self.grid_size + c

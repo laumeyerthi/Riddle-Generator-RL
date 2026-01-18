@@ -1,5 +1,5 @@
 import gymnasium as gym
-from gymnasium.wrappers import FlattenObservation
+from gymnasium.wrappers import FlattenObservation, TimeLimit
 from stable_baselines3 import DQN
 from stable_baselines3.common.evaluation import evaluate_policy
 import sys
@@ -10,6 +10,7 @@ from gymnasium_env.envs.lab_env import LabEnv
 
 def evaluate():
     env = LabEnv(number_of_rooms=4)
+    env = TimeLimit(env, max_episode_steps=100)
     env = FlattenObservation(env)
     
     model_path = os.path.join(os.path.dirname(__file__), '..', "dqn_lab_env")
