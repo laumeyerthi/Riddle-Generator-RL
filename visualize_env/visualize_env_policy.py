@@ -29,9 +29,7 @@ def main():
                 print("Button " + str(action - 5))
         # Step the environment
         obs, reward, terminated, truncated, info = env.step(action)
-        
-        # Render is called inside step() when render_mode="human"
-        
+                
         # Slow down to see the rendering
         time.sleep(0.1)
         
