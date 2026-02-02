@@ -17,8 +17,7 @@ class LabGenerator:
         self.button_location_matrix = None
         self.button2door_behavior_matrix = None
         self.valid_layout = False
-        # User requested potentially num_rooms buttons
-        self.number_of_buttons = self.number_of_rooms
+        self.number_of_buttons = number_of_rooms
         self.generate_lab()
 
     def get_grid_adjacency(self):
@@ -177,6 +176,8 @@ class LabGenerator:
 
     def generate_lab(self):
         attempts = 0
+        self.start_room = np.random.randint(self.number_of_rooms)
+        self.goal_room = np.random.choice([x for x in range(self.number_of_rooms) if x != self.start_room])
         while True:
             attempts += 1
             # 1. Generate Layout

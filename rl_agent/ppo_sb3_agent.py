@@ -1,5 +1,5 @@
 import gymnasium as gym
-from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 import sys
 import os
 
@@ -10,24 +10,24 @@ from gymnasium_env.envs.lab_env import LabEnv
 def train():
     print("Initializing Environment...")
     env = LabEnv(number_of_rooms=4)
+    
     print("Observation Space:", env.observation_space)
     print("Action Space:", env.action_space)
 
 
-    print("Initializing DQN Model...")
-    # Instantiate the agent
-    model = DQN(
+    print("Initializing PPO Model...")
+    model = PPO(
         "MultiInputPolicy", 
         env, 
-        verbose=0, 
-        tensorboard_log="tmp/logs/dqn_sb3_agent/"
+        verbose=0,
+        tensorboard_log="tmp/logs/ppo_sb3_agent/"
     )
     
     print("Starting Training...")
-    model.learn(total_timesteps=100000,progress_bar=True)
+    model.learn(total_timesteps=500000,progress_bar=True)
     
     print("Saving Model...")
-    model.save("dqn_lab_env")
+    model.save("ppo_lab_env")
     print("Training finished and model saved.")
 
 if __name__ == "__main__":
