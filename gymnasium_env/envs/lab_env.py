@@ -32,7 +32,7 @@ class LabEnv(gym.Env):
         # Rendering
         self.window = None
         self.clock = None
-        self.window_size = 512  # The size of the PyGame window
+        self.window_size = 512
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)        
@@ -103,7 +103,6 @@ class LabEnv(gym.Env):
                     behavior = self.lab.button2door_behavior_matrix[btn_idx]
                     
                     # XOR current states with behavior
-                    # Behavior 1 means "Toggle this edge"
                     current_states = self.lab.door_state_matrix
                     new_states = np.logical_xor(current_states, behavior).astype(int)
                     
@@ -117,6 +116,7 @@ class LabEnv(gym.Env):
                     pass
             else:
                 # Button index out of bounds
+                reward = -2
                 pass
         if self.render_mode == "human":
             self.render()
@@ -178,7 +178,6 @@ class LabEnv(gym.Env):
                 )
 
             # Draw Walls and Doors
-            # We iterate over all connections (Right and Down for each cell)
             for r in range(self.grid_size):
                 for c in range(self.grid_size):
                     curr_idx = self.lab.coord_to_index(r, c)
@@ -225,8 +224,6 @@ class LabEnv(gym.Env):
                     
                     for i, btn_idx in enumerate(buttons_here):
                         # Offset each button slightly to avoid overlap
-                        # We can support up to 4 buttons easily in corners, or just line them up
-                        # Let's simple line them up horizontally for now
                         offset_x = 0.2 + (i * 0.2)
                         offset_y = 0.2
                         
