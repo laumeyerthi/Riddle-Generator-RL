@@ -12,7 +12,7 @@ def main():
     print("Environment initialized with Pygame rendering.")
     print("Running selected actions...")
 
-    for i in range(10):
+    for i in range(20):
         action = interface.get_action(obs)
         match action:
             case 0:

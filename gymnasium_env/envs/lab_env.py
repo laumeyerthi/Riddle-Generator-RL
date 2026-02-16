@@ -5,7 +5,7 @@ import pygame
 from .lab_generator import LabGenerator
 
 class LabEnv(gym.Env):
-    metadata = {"render_modes": ["human"]}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(self, render_mode=None, number_of_rooms=4):
         self.num_rooms = number_of_rooms 
@@ -143,126 +143,154 @@ class LabEnv(gym.Env):
             if self.clock is None:
                 self.clock = pygame.time.Clock()
 
-            canvas = pygame.Surface((self.window_size, self.window_size))
-            canvas.fill((255, 255, 255))
-            pix_square_size = (self.window_size / self.grid_size)
+        canvas = pygame.Surface((self.window_size, self.window_size))
+        canvas.fill((255, 255, 255))
+        pix_square_size = (self.window_size / self.grid_size)
 
-            # Draw Goal
-            goal_r, goal_c = self.lab.index_to_coord(self.lab.goal_room)
-            pygame.draw.rect(
+        # Draw Goal
+        goal_r, goal_c = self.lab.index_to_coord(self.lab.goal_room)
+        pygame.draw.rect(
+            canvas,
+            (255, 255, 0),
+            pygame.Rect(
+                pix_square_size * goal_c,
+                pix_square_size * goal_r,
+                pix_square_size,
+                pix_square_size,
+            ),
+        )
+
+        # Draw Grid Lines
+        for x in range(self.grid_size + 1):
+            pygame.draw.line(
                 canvas,
-                (255, 255, 0),
-                pygame.Rect(
-                    pix_square_size * goal_c,
-                    pix_square_size * goal_r,
-                    pix_square_size,
-                    pix_square_size,
-                ),
+                0,
+                (0, pix_square_size * x),
+                (self.window_size, pix_square_size * x),
+                width=3,
+            )
+            pygame.draw.line(
+                canvas,
+                0,
+                (pix_square_size * x, 0),
+                (pix_square_size * x, self.window_size),
+                width=3,
             )
 
-            # Draw Grid Lines
-            for x in range(self.grid_size + 1):
-                pygame.draw.line(
-                    canvas,
-                    0,
-                    (0, pix_square_size * x),
-                    (self.window_size, pix_square_size * x),
-                    width=3,
-                )
-                pygame.draw.line(
-                    canvas,
-                    0,
-                    (pix_square_size * x, 0),
-                    (pix_square_size * x, self.window_size),
-                    width=3,
-                )
-
-            # Draw Walls and Doors
-            for r in range(self.grid_size):
-                for c in range(self.grid_size):
-                    curr_idx = self.lab.coord_to_index(r, c)
+        # Draw Walls and Doors
+        for r in range(self.grid_size):
+            for c in range(self.grid_size):
+                curr_idx = self.lab.coord_to_index(r, c)
+                
+                # Right Connection
+                if c + 1 < self.grid_size:
+                    right_idx = self.lab.coord_to_index(r, c + 1)
+                    has_connection = self.lab.room_trans_matrix[curr_idx, right_idx] == 1
+                    is_open = self.lab.door_state_matrix[curr_idx, right_idx] == 1
                     
-                    # Right Connection
-                    if c + 1 < self.grid_size:
-                        right_idx = self.lab.coord_to_index(r, c + 1)
-                        has_connection = self.lab.room_trans_matrix[curr_idx, right_idx] == 1
-                        is_open = self.lab.door_state_matrix[curr_idx, right_idx] == 1
-                        
-                        start_pos = ((c + 1) * pix_square_size, r * pix_square_size)
-                        end_pos = ((c + 1) * pix_square_size, (r + 1) * pix_square_size)
-                        
-                        if not has_connection:
-                            # Draw Wall (Black thick line)
-                            pygame.draw.line(canvas, (0, 0, 0), start_pos, end_pos, width=5)
-                        else:
-                            # Draw Door
-                            color = (0, 255, 0) if is_open else (255, 0, 0)
-                            pygame.draw.line(canvas, color, start_pos, end_pos, width=5)
-
-                    # Down Connection
-                    if r + 1 < self.grid_size:
-                        down_idx = self.lab.coord_to_index(r + 1, c)
-                        has_connection = self.lab.room_trans_matrix[curr_idx, down_idx] == 1
-                        is_open = self.lab.door_state_matrix[curr_idx, down_idx] == 1
-                        
-                        start_pos = (c * pix_square_size, (r + 1) * pix_square_size)
-                        end_pos = ((c + 1) * pix_square_size, (r + 1) * pix_square_size)
-                        
-                        if not has_connection:
-                            # Draw Wall (Black thick line)
-                            pygame.draw.line(canvas, (0, 0, 0), start_pos, end_pos, width=5)
-                        else:
-                            # Draw Door
-                            color = (0, 255, 0) if is_open else (255, 0, 0)
-                            pygame.draw.line(canvas, color, start_pos, end_pos, width=5)
-
-            # Draw Buttons
-            for r in range(self.grid_size):
-                for c in range(self.grid_size):
-                    curr_idx = self.lab.coord_to_index(r, c)
-                    buttons_here = np.where(self.lab.button_location_matrix[curr_idx] == 1)[0]
+                    start_pos = ((c + 1) * pix_square_size, r * pix_square_size)
+                    end_pos = ((c + 1) * pix_square_size, (r + 1) * pix_square_size)
                     
-                    for i, btn_idx in enumerate(buttons_here):
-                        # Offset each button slightly to avoid overlap
-                        offset_x = 0.2 + (i * 0.2)
-                        offset_y = 0.2
-                        
-                        # Wrap to next row if too many (e.g. > 3)
-                        if offset_x > 0.8:
-                            offset_x = 0.2 + ((i % 3) * 0.2)
-                            offset_y = 0.4
-                        
-                        center = (
-                            int((c + offset_x) * pix_square_size),
-                            int((r + offset_y) * pix_square_size),
-                        )
-                        
-                        match btn_idx:
-                            case 0:
-                                pygame.draw.circle(canvas, (0, 0, 255), center, 5)
-                            case 1:
-                                pygame.draw.circle(canvas, (0, 255, 0), center, 5)
-                            case 2:
-                                pygame.draw.circle(canvas, (255, 0, 0), center, 5)
-                            case 3:
-                                pygame.draw.circle(canvas, (255, 255, 0), center, 5)
-            # Draw Agent
-            pygame.draw.circle(
-                canvas,
-                (100, 100, 100),
-                (
-                    (self.agent_location[1] + 0.5) * pix_square_size,
-                    (self.agent_location[0] + 0.5) * pix_square_size,
-                ),
-                20
-            )
+                    if not has_connection:
+                        # Draw Wall
+                        pygame.draw.line(canvas, (0, 0, 0), start_pos, end_pos, width=5)
+                    else:
+                        # Draw Door
+                        color = (0, 255, 0) if is_open else (255, 0, 0)
+                        pygame.draw.line(canvas, color, start_pos, end_pos, width=5)
 
+                # Down Connection
+                if r + 1 < self.grid_size:
+                    down_idx = self.lab.coord_to_index(r + 1, c)
+                    has_connection = self.lab.room_trans_matrix[curr_idx, down_idx] == 1
+                    is_open = self.lab.door_state_matrix[curr_idx, down_idx] == 1
+                    
+                    start_pos = (c * pix_square_size, (r + 1) * pix_square_size)
+                    end_pos = ((c + 1) * pix_square_size, (r + 1) * pix_square_size)
+                    
+                    if not has_connection:
+                        # Draw Wall
+                        pygame.draw.line(canvas, (0, 0, 0), start_pos, end_pos, width=5)
+                    else:
+                        # Draw Door
+                        color = (0, 255, 0) if is_open else (255, 0, 0)
+                        pygame.draw.line(canvas, color, start_pos, end_pos, width=5)
+
+        # Draw Buttons
+        for r in range(self.grid_size):
+            for c in range(self.grid_size):
+                curr_idx = self.lab.coord_to_index(r, c)
+                buttons_here = np.where(self.lab.button_location_matrix[curr_idx] == 1)[0]
+                
+                for i, btn_idx in enumerate(buttons_here):
+                    offset_x = 0.2 + (i * 0.2)
+                    offset_y = 0.2
+                    
+                    if offset_x > 0.8:
+                        offset_x = 0.2 + ((i % 3) * 0.2)
+                        offset_y = 0.4
+                    
+                    center = (
+                        int((c + offset_x) * pix_square_size),
+                        int((r + offset_y) * pix_square_size),
+                    )
+                    
+                    match btn_idx:
+                        case 0:
+                            pygame.draw.circle(canvas, (0, 0, 255), center, 5)
+                        case 1:
+                            pygame.draw.circle(canvas, (0, 255, 0), center, 5)
+                        case 2:
+                            pygame.draw.circle(canvas, (255, 0, 0), center, 5)
+                        case 3:
+                            pygame.draw.circle(canvas, (255, 255, 0), center, 5)
+        # Draw Agent
+        pygame.draw.circle(
+            canvas,
+            (100, 100, 100),
+            (
+                (self.agent_location[1] + 0.5) * pix_square_size,
+                (self.agent_location[0] + 0.5) * pix_square_size,
+            ),
+            20
+        )
+
+        if self.render_mode == "human":
             self.window.blit(canvas, canvas.get_rect())
             pygame.event.pump()
             pygame.display.update()
+
             self.clock.tick(self.metadata.get("render_fps", 4))
+        elif self.render_mode == "rgb_array":
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
+            )
 
     def close(self):
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()
+    
+    def action_masks(self):
+        mask = np.zeros(5 + self.lab.number_of_buttons, dtype=np.int8)
+        current_r, current_c = self.agent_location
+        current_idx = self.lab.coord_to_index(current_r, current_c)
+        
+        # 1. Check Moves (Right, Up, Left, Down)
+        deltas = [(0, 1), (-1, 0), (0, -1), (1, 0)]
+        
+        for i, (dr, dc) in enumerate(deltas):
+            new_r, new_c = current_r + dr, current_c + dc
+            
+            if 0 <= new_r < self.grid_size and 0 <= new_c < self.grid_size:
+                target_idx = self.lab.coord_to_index(new_r, new_c)
+                mask[i] = self.lab.door_state_matrix[current_idx, target_idx]
+        
+        # 2. Check Backtrack (Action 4)
+        if self.last_pos[0] != -1:
+            mask[4] = 1
+            
+        # 3. Check Buttons
+        mask[5:] = self.lab.button_location_matrix[current_idx]
+        
+        return mask
