@@ -3,6 +3,9 @@ import pygame
 import sys
 import os
 from ai_chat_bot import AIChatBot
+from transcript.LocalSTT import LocalSTT
+from matcher.localCommandMatcher import LocalCommandMatcher
+from recording.VoiceRecorder import VoiceRecorder
 import numpy as np
 
 # Add parent directory for env import
@@ -27,18 +30,15 @@ def wrap_text(text, font, max_width):
     current_line = []
 
     for word in words:
-        # Test what the line would look like with the new word
         test_line = ' '.join(current_line + [word])
         width, _ = font.size(test_line)
         
         if width <= max_width:
             current_line.append(word)
         else:
-            # Line is too long, save the current one and start a new one
             lines.append(' '.join(current_line))
             current_line = [word]
             
-    # Add the last line
     if current_line:
         lines.append(' '.join(current_line))
     return lines
@@ -58,12 +58,15 @@ def play_game():
     font = pygame.font.Font(None, 24)
     pygame.display.set_caption("Labyrinth")
     
-    
+    matcher = LocalCommandMatcher()
+    recorder = VoiceRecorder()
+    localSTT = LocalSTT()
     
     user_text = ""
     chat_history = ["System: Ask me for tips!"]
     typing_mode = False    
     running = True
+    is_recording = False
     current_state = observation
     
     while running:
@@ -72,6 +75,11 @@ def play_game():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
+            
+            if event.key == pygame.K_v and not typing_mode:
+                is_recording = True
+                recorder.start()
+            
             if event.key == pygame.K_RETURN:
                 if typing_mode:
                     print(user_text)
@@ -94,6 +102,20 @@ def play_game():
                     if(terminated or truncated):
                         print("Game Over! Resetting...")
                         current_state, info = env.reset()
+        elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_v and is_recording:
+                is_recording = False
+                audio_file = recorder.stop_and_save()
+                transcribed_text = localSTT.transcribe(audio_file)
+                
+                match = matcher.process_input(transcribed_text)
+                if match != "NO_MATCH":
+                    #TODO add commands
+                    print(match) 
+                else:
+                    ai_chat.send_message(transcribed_text, current_state, env.action_masks())
+        
+        
         new_msg = ai_chat.get_new_messages()
         if new_msg:
             chat_history.extend(new_msg)

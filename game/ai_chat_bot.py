@@ -41,7 +41,7 @@ class AIChatBot:
     def _worker_loop(self):
         
         try:
-            chat = self.client.chats.create(model="gemini-flash-latest")        
+            chat = self.client.chats.create(model="gemini-2.5-flash")      
         except Exception as e:
             print(f"Failed to create chat: {e}")
             return
