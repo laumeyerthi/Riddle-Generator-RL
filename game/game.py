@@ -108,10 +108,13 @@ def play_game():
                 audio_file = recorder.stop_and_save()
                 transcribed_text = localSTT.transcribe(audio_file)
                 
-                match = matcher.process_input(transcribed_text)
-                if match != "NO_MATCH":
-                    #TODO add commands
-                    print(match) 
+                command = matcher.process_input(transcribed_text)
+                if command != "NO_MATCH":
+                    print(command) 
+                    match command:
+                        case "STOP":
+                            running = False
+                        #TODO add other commands
                 else:
                     ai_chat.send_message(transcribed_text, current_state, env.action_masks())
         
