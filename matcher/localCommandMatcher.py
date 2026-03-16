@@ -1,4 +1,4 @@
-import re
+import difflib
 
 class LocalCommandMatcher:
     def __init__(self):
@@ -6,10 +6,16 @@ class LocalCommandMatcher:
             "stop": "STOP", "halt": "STOP", "stoppen": "STOP", "anhalten": "STOP",
             "go": "MOVE", "geh": "MOVE", "laufen": "MOVE", "move": "MOVE"
         }
+        self.valid_commands = list(self.COMMAND_MAP.keys())
         
-    def process_input(self, user_text):
+    def process_input(self, user_text, cutoff=0.75):
         words = user_text.lower().split()
+        
         for word in words:
-            if word in self.COMMAND_MAP:
-                return self.COMMAND_MAP[word]
+            matches = difflib.get_close_matches(word, self.valid_commands, n=1, cutoff=cutoff)
+            
+            if matches:
+                best_match = matches[0]
+                return self.COMMAND_MAP[best_match]
+                
         return "NO_MATCH"
