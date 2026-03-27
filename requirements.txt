@@ -6,7 +6,7 @@ pygame
 python-dotenv
 sb3_contrib
 scipy
-skrl
+google-genai
 sounddevice
 stable_baselines3
 imitation
