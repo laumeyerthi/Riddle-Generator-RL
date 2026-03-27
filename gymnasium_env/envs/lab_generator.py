@@ -9,11 +9,10 @@ class LabGenerator:
         assert self.grid_size ** 2 == self.number_of_rooms, "Number of rooms must be a perfect square for Grid World"
 
         self.room_trans_matrix = None
-        # pick a random start room
-        self.start_room = np.random.randint(self.number_of_rooms)
-        # pick a random goal room that is not the start room
-        self.goal_room = np.random.choice([x for x in range(self.number_of_rooms) if x != self.start_room])
+        self.start_room = -1
+        self.goal_room = -1
         self.door_state_matrix = None
+        self.rng = np.random.default_rng()
         self.button_location_matrix = None
         self.button2door_behavior_matrix = None
         self.valid_layout = False
@@ -40,7 +39,7 @@ class LabGenerator:
 
     def generate_rooms(self):
         # Generate random matrix
-        rooms = np.random.randint(0, 2, size=(self.number_of_rooms, self.number_of_rooms))
+        rooms = self.rng.integers(0, 2, size=(self.number_of_rooms, self.number_of_rooms))
         rooms = np.triu(rooms, 1) # Upper triangle
         rooms = rooms + rooms.T # Symmetric
         np.fill_diagonal(rooms, 1) # Self connected
@@ -93,14 +92,14 @@ class LabGenerator:
         # Randomly place buttons.
         # Shape: (num_rooms, num_buttons)
         # Assuming we want random distribution.
-        self.button_location_matrix = np.random.randint(0, 2, size=(self.number_of_rooms, self.number_of_buttons))
+        self.button_location_matrix = self.rng.integers(0, 2, size=(self.number_of_rooms, self.number_of_buttons))
 
     def generate_button2door_behavior(self):
         self.button2door_behavior_matrix = np.array([self.generate_single_button_matrix() for _ in range(self.number_of_buttons)])
 
     def generate_single_button_matrix(self):
         # create room x room matrix that shows which doors to toogle for one button
-        single_button_matrix = np.random.randint(0, 2, size=(self.number_of_rooms, self.number_of_rooms))
+        single_button_matrix = self.rng.integers(0, 2, size=(self.number_of_rooms, self.number_of_rooms))
         single_button_matrix = np.triu(single_button_matrix, 1)
         single_button_matrix += single_button_matrix.T
         
@@ -174,10 +173,13 @@ class LabGenerator:
                     
         return False
 
-    def generate_lab(self):
+    def generate_lab(self, seed=None):
+        if seed is not None:
+            self.rng = np.random.default_rng(seed)
+            
         attempts = 0
-        self.start_room = np.random.randint(self.number_of_rooms)
-        self.goal_room = np.random.choice([x for x in range(self.number_of_rooms) if x != self.start_room])
+        self.start_room = self.rng.integers(0, self.number_of_rooms)
+        self.goal_room = self.rng.choice([x for x in range(self.number_of_rooms) if x != self.start_room])
         while True:
             attempts += 1
             # 1. Generate Layout

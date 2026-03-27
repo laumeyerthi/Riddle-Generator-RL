@@ -44,7 +44,7 @@ def wrap_text(text, font, max_width):
     return lines
 
 def play_game():
-    env = LabEnv(render_mode="rgb_array")
+    env = LabEnv(number_of_rooms=9 ,render_mode="rgb_array")
     ai_chat = AIChatBot()
     observation, info = env.reset()
     

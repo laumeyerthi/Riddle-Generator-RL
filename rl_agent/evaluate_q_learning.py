@@ -13,13 +13,11 @@ from skrl.utils import set_seed
 
 def evaluate():
     set_seed(42)
-    # Try to load specific model file first
     model_path = os.path.join(os.path.dirname(__file__), '..', 'q_learning_agent.pt')
     if os.path.exists(model_path):
         print(f"Loading from: {model_path}")
         latest_checkpoint = model_path
     else:
-        # Find latest checkpoint in runs
         run_dir = os.path.join(os.path.dirname(__file__), '..', 'runs', 'torch', 'LabEnv_QLearning')
         runs = glob.glob(os.path.join(run_dir, '*'))
         if not runs:
@@ -35,19 +33,16 @@ def evaluate():
         latest_checkpoint = max(checkpoints, key=os.path.getmtime)
         print(f"Checkpoint: {latest_checkpoint}")
 
-    # Setup Env
     base_env = LabEnv(number_of_rooms=4)
     env = DiscreteObservationWrapper(base_env, num_states=20000)
     env = wrap_env(env)
     device = env.device
 
-    # Setup Agent
     models = {}
-    # Use Epsilon 0 for evaluation (Greedy)
     models["policy"] = EpsilonGreedyPolicy(env.observation_space, env.action_space, device, num_envs=env.num_envs, epsilon=0.0)
 
     cfg = Q_LEARNING_DEFAULT_CONFIG.copy()
-    cfg["experiment"]["write_interval"] = 0 # Disable writing
+    cfg["experiment"]["write_interval"] = 0
     
     agent = Q_LEARNING(models=models,
                        memory=None,
@@ -59,11 +54,10 @@ def evaluate():
     print("Loading agent...")
     agent.load(latest_checkpoint)
     
-    # Run
     agent.set_running_mode("eval")
     print("Starting Evaluation (5 Episodes)...")
     
-    for i in range(5): # 5 Episodes
+    for i in range(5): 
         obs, _ = env.reset()
         terminated = False
         truncated = False

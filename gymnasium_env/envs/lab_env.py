@@ -7,7 +7,8 @@ from .lab_generator import LabGenerator
 class LabEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, number_of_rooms=4):
+    def __init__(self, render_mode=None, number_of_rooms=4, valid_seeds=None):
+        self.valid_seeds = valid_seeds
         self.num_rooms = number_of_rooms 
         self.lab = LabGenerator(number_of_rooms=self.num_rooms)
         self.grid_size = self.lab.grid_size
@@ -33,10 +34,32 @@ class LabEnv(gym.Env):
         self.window = None
         self.clock = None
         self.window_size = 512
-
+        
+        # rewards
+        self.reward_step = -0.1
+        self.reward_goal = 10.0
+        self.reward_invalid = -0.5
+        
+        # seeds
+        self.train_seeds = list(range(0, 1000000))
+        self.eval_seeds = list(range(1000000, 1000100))
+        
+        if valid_seeds == "train":
+            self.valid_seeds = self.train_seeds
+        elif valid_seeds == "eval":
+            self.valid_seeds = self.eval_seeds
+        else:
+            self.valid_seeds = None
+        
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)        
-        self.lab.generate_lab()        
+        
+        if self.valid_seeds is not None:
+            lab_seed = int(self.np_random.choice(self.valid_seeds))
+        else:
+            lab_seed = int(self.np_random.integers(0, 2**31 - 1))
+            
+        self.lab.generate_lab(seed=lab_seed)        
         start_idx = self.lab.start_room
         agent_r, agent_c = self.lab.index_to_coord(start_idx)
         self.agent_location = np.array([agent_r, agent_c])
@@ -49,14 +72,12 @@ class LabEnv(gym.Env):
         return self._get_obs(), {}
 
     def step(self, action):
-        reward = -1
+        reward = self.reward_step
         terminated = False
         truncated = False
         self.steps += 1
         if(self.steps >100):
             truncated = True
-            reward = -100
-            pass
             
         
         current_r, current_c = self.agent_location
@@ -89,10 +110,10 @@ class LabEnv(gym.Env):
                     # Check Goal
                     if target_idx == self.lab.goal_room:
                         terminated = True
-                        reward = 10.0
+                        reward = self.reward_goal
                 else:
                     # Blocked (Wall or Closed Door)
-                    reward = -2
+                    reward = self.reward_invalid
                     pass
         else: # Button
             btn_idx = action - 5
@@ -112,8 +133,7 @@ class LabEnv(gym.Env):
                     self.lab.door_state_matrix = new_states
                 else:
                     # Button not in current room
-                    reward = -2
-                    pass
+                    reward = self.reward_invalid
             else:
                 # Button index out of bounds
                 reward = -2
