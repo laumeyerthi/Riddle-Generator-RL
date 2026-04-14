@@ -7,22 +7,42 @@ from .lab_generator import LabGenerator
 class LabEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, number_of_rooms=4, valid_seeds=None):
+    def __init__(self, render_mode=None, number_of_rooms=4, valid_seeds=None, max_rooms=None):
         self.valid_seeds = valid_seeds
         self.num_rooms = number_of_rooms 
+        self.max_rooms = max_rooms if max_rooms is not None else number_of_rooms
+        
         self.lab = LabGenerator(number_of_rooms=self.num_rooms)
         self.grid_size = self.lab.grid_size
+        self.max_grid_size = int(np.sqrt(self.max_rooms))
         
-        self.action_space = spaces.Discrete(5 + self.lab.number_of_buttons)
+        self.action_space = spaces.Discrete(5 + self.max_rooms)
         
         # Observations
+        # self.observation_space = spaces.Dict({
+        #     "agent_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
+        #     "goal_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
+        #     "door_states": spaces.Box(0, 1, shape=(self.num_rooms, self.num_rooms), dtype=int),
+        #     "button_locations": spaces.Box(0, 1, shape=(self.num_rooms, self.lab.number_of_buttons), dtype=int),
+        #     "last_pos": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
+        #     "button_door_behavior": spaces.Box(0, 1, shape=(self.lab.number_of_buttons, self.num_rooms, self.num_rooms), dtype=int),
+        # })
         self.observation_space = spaces.Dict({
-            "agent_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
-            "goal_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
-            "door_states": spaces.Box(0, 1, shape=(self.num_rooms, self.num_rooms), dtype=int),
-            "button_locations": spaces.Box(0, 1, shape=(self.num_rooms, self.lab.number_of_buttons), dtype=int),
-            "last_pos": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
-            #"button_door_behavior": spaces.Box(0, 1, shape=(self.lab.number_of_buttons, self.num_rooms, self.num_rooms), dtype=int),
+            # Coordinates (using MultiDiscrete for X,Y pairs)
+            "agent_location": spaces.MultiDiscrete([self.grid_size, self.grid_size]),
+            "goal_location":  spaces.MultiDiscrete([self.grid_size, self.grid_size]),
+            "last_pos":       spaces.MultiDiscrete([self.grid_size, self.grid_size]),
+
+            # Binary Grids/Matrices (using MultiBinary for 0/1 states)
+            "door_states": spaces.MultiBinary((self.num_rooms, self.num_rooms)),
+            
+            "button_locations": spaces.MultiBinary(
+                (self.num_rooms, self.lab.number_of_buttons)
+            ),
+            
+            "button_door_behavior": spaces.MultiBinary(
+                (self.lab.number_of_buttons, self.num_rooms, self.num_rooms)
+            ),
         })
         
         self.render_mode = render_mode
@@ -42,7 +62,7 @@ class LabEnv(gym.Env):
         
         # seeds
         self.train_seeds = list(range(0, 1000000))
-        self.eval_seeds = list(range(1000000, 1000100))
+        self.eval_seeds = list(range(10000000, 10001000))
         
         if valid_seeds == "train":
             self.valid_seeds = self.train_seeds
@@ -50,6 +70,37 @@ class LabEnv(gym.Env):
             self.valid_seeds = self.eval_seeds
         else:
             self.valid_seeds = None
+            
+        # Hook up caching framework
+        self.precalc_data = None
+        self.precalc_seeds_map = {}
+        self._load_precalc_data()
+            
+    def _load_precalc_data(self):
+        import os
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        dataset_path = os.path.join(base_dir, "..", "..", "datasets", f"mazes_{self.num_rooms}.npz")
+        
+        if os.path.exists(dataset_path):
+            try:
+                data = np.load(dataset_path)
+                # Parse all arrays into direct memory 
+                self.precalc_data = {k: v for k, v in data.items()}
+                # Create extremely fast seed-to-index lookup mapping
+                self.precalc_seeds_map = {seed: idx for idx, seed in enumerate(self.precalc_data["seeds"])}
+            except Exception as e:
+                print(f"[LabEnv] Failed to parse dataset {dataset_path}: {e}")
+                self.precalc_data = None
+        else:
+            self.precalc_data = None
+            
+    def set_curriculum_stage(self, number_of_rooms):
+        if number_of_rooms > self.max_rooms:
+            raise ValueError(f"Curriculum room size {number_of_rooms} exceeds configured max_rooms={self.max_rooms}")
+        self.num_rooms = number_of_rooms
+        self.lab = LabGenerator(number_of_rooms=self.num_rooms)
+        self.grid_size = self.lab.grid_size
+        self._load_precalc_data()
         
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)        
@@ -59,11 +110,22 @@ class LabEnv(gym.Env):
         else:
             lab_seed = int(self.np_random.integers(0, 2**31 - 1))
             
-        self.lab.generate_lab(seed=lab_seed)        
+        # Hook into RAM dataset arrays to skip physical maze generation completely
+        if self.precalc_data is not None and lab_seed in self.precalc_seeds_map:
+            idx = self.precalc_seeds_map[lab_seed]
+            self.lab.start_room = self.precalc_data["start_room"][idx]
+            self.lab.goal_room = self.precalc_data["goal_room"][idx]
+            self.lab.room_trans_matrix = self.precalc_data["room_trans_matrix"][idx]
+            self.lab.door_state_matrix = self.precalc_data["door_state_matrix"][idx]
+            self.lab.button_location_matrix = self.precalc_data["button_location_matrix"][idx]
+            self.lab.button2door_behavior_matrix = self.precalc_data["button2door_behavior_matrix"][idx]
+        else:
+            self.lab.generate_lab(seed=lab_seed)        
+            
         start_idx = self.lab.start_room
         agent_r, agent_c = self.lab.index_to_coord(start_idx)
         self.agent_location = np.array([agent_r, agent_c])
-        self.last_pos = np.array([-1, -1])
+        self.last_pos = self.agent_location
         self.steps = 0
         
         if self.render_mode == "human":
@@ -145,14 +207,23 @@ class LabEnv(gym.Env):
 
     def _get_obs(self):
         goal_r, goal_c = self.lab.index_to_coord(self.lab.goal_room)
-        return {
+        obs = {
             "agent_location": self.agent_location,
             "goal_location": np.array([goal_r, goal_c], dtype=int),
-            "door_states": self.lab.door_state_matrix.copy().astype(int),
-            "button_locations": self.lab.button_location_matrix.copy().astype(int),
+            "door_states": self.lab.door_state_matrix.copy().astype(np.int8),
+            "button_locations": self.lab.button_location_matrix.copy().astype(np.int8),
             "last_pos": self.last_pos,
-            #"button_door_behavior": self.lab.button2door_behavior_matrix.copy().astype(int),
+            "button_door_behavior": self.lab.button2door_behavior_matrix.copy().astype(np.int8),
         }
+        
+        for key, value in obs.items():
+            space = self.observation_space[key]
+            if not space.contains(value):
+                print(f"CRITICAL: {key} is out of bounds!")
+                print(f"Value: {value}")
+                print(f"Space: {space}")
+                
+        return obs
 
     def render(self):
         if self.render_mode == "human":
@@ -292,7 +363,7 @@ class LabEnv(gym.Env):
             pygame.quit()
     
     def action_masks(self):
-        mask = np.zeros(5 + self.lab.number_of_buttons, dtype=np.int8)
+        mask = np.zeros(5 + self.max_rooms, dtype=np.int8)
         current_r, current_c = self.agent_location
         current_idx = self.lab.coord_to_index(current_r, current_c)
         
@@ -311,6 +382,6 @@ class LabEnv(gym.Env):
             mask[4] = 1
             
         # 3. Check Buttons
-        mask[5:] = self.lab.button_location_matrix[current_idx]
+        mask[5:5+self.lab.number_of_buttons] = self.lab.button_location_matrix[current_idx]
         
         return mask

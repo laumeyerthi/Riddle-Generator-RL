@@ -1,6 +1,7 @@
 import threading
 import queue
 from google import genai
+from google.genai import types
 from llm_interface.ppo_interface import PPOInterface
 from llm_interface.ppo_masked_interface import PPOMaskedInterface
 from dotenv import load_dotenv
@@ -14,10 +15,11 @@ class AIChatBot:
     def __init__(self):
         self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
+        self.audio_queue = queue.Queue()
         self.running = True
         self.latest_game_state = {}
         self.current_mask = None
-        self.interface = PPOInterface()
+        #self.interface = PPOInterface()
         self.interface_mask = PPOMaskedInterface()
         if not API_KEY:
             raise ValueError("GEMINI_API_KEY not found! Check your .env file.")
@@ -37,11 +39,30 @@ class AIChatBot:
         while not self.output_queue.empty():
             messages.append(self.output_queue.get())
         return messages
+
+    def get_new_audio(self):
+        audio = []
+        while not self.audio_queue.empty():
+            audio.append(self.audio_queue.get())
+        return audio    
     
     def _worker_loop(self):
-        
         try:
-            chat = self.client.chats.create(model="gemini-2.5-flash")      
+            chat_config = types.GenerateContentConfig(
+                response_modalities=["TEXT", "AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name="Fenrir" # Puck, Charon, Kore, Fenrir, Aoede, Leda, Orus, and Zephyr
+                        )
+                    )
+                )
+            )
+            chat = self.client.chats.create(
+                #model="gemini-2.5-pro",
+                model = "gemini-3.1-flash-lite"
+                #config=chat_config
+            )  
         except Exception as e:
             print(f"Failed to create chat: {e}")
             return
@@ -69,8 +90,8 @@ class AIChatBot:
                         Current Game State: {self.latest_game_state}
                         Current Allowed Actions: {self.current_mask}
                         Current Action Prediction : {self.interface_mask.get_action(self.latest_game_state, self.current_mask)}
-                        Current Action Propabilities: {self.interface.get_action_probs(self.latest_game_state)}
-                        Current Advantages : {self.interface.get_winning_probs(self.latest_game_state)}
+                        Current Action Propabilities: {self.interface_mask.get_action_probs(self.latest_game_state)}
+                        Current Advantages : {self.interface_mask.get_winning_probs(self.latest_game_state)}
                         User Input: {user_text}
                         
                         Instruction: You are a helpful game copilot to a labirynth game. You have the results from an ppo rl agent trained on the game. Keep advice short (under 2 sentences). The actions are in order right, up, left, down, backtrack, button1, button2, button3 and button4.
@@ -82,6 +103,12 @@ class AIChatBot:
                 if ai_text:
                     clean_text = ai_text.strip().replace("**", "")
                     self.output_queue.put(f"Gemini: {clean_text}")
+                    
+                if response.candidates and response.candidates[0].content.parts:
+                    for part in response.candidates[0].content.parts:
+                        if part.inline_data and part.inline_data.mime_type.startswith("audio/"):
+                            audio_bytes = part.inline_data.data
+                            self.audio_queue.put(audio_bytes)
             except Exception as e:
                 print(f"API ERROR: {e}")
                 self.output_queue.put("System: AI Error (See Console)")

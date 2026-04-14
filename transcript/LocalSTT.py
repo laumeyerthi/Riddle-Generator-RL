@@ -3,7 +3,7 @@ from faster_whisper import WhisperModel
 
 class LocalSTT:
     def __init__(self, model_size="small"):
-        if False:
+        if torch.cuda.is_available():
             self.device = "cuda"
             self.compute_type = "float16"  
             print("GPU detected. Faster-Whisper will run on CUDA.")

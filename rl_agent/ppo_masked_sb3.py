@@ -123,7 +123,7 @@ def train():
     model.learn(total_timesteps=500000,progress_bar=True)
     
     print("Saving Model...") 
-    model.save("ppo_masked_lab_env")
+    model.save("ppo_masked_button_env")
     print("Training finished and model saved.")
     
     eval_env = LabEnv(number_of_rooms=9, valid_seeds="eval")

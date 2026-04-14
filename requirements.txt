@@ -1,12 +1,12 @@
 faster-whisper
 gymnasium
 numpy
-protobuf
 pygame
 python-dotenv
 sb3_contrib
-scipy
 google-genai
 sounddevice
 stable_baselines3
-imitation
+optuna
+scipy
+tensorboard

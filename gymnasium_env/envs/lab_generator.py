@@ -16,7 +16,7 @@ class LabGenerator:
         self.button_location_matrix = None
         self.button2door_behavior_matrix = None
         self.valid_layout = False
-        self.number_of_buttons = number_of_rooms
+        self.number_of_buttons = 4
         self.generate_lab()
 
     def get_grid_adjacency(self):

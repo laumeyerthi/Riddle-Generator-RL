@@ -1,15 +1,18 @@
-from gymnasium.utils.play import play
-import pygame
 import sys
 import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from gymnasium.utils.play import play
+import pygame
 from ai_chat_bot import AIChatBot
 from transcript.LocalSTT import LocalSTT
 from matcher.localCommandMatcher import LocalCommandMatcher
 from recording.VoiceRecorder import VoiceRecorder
+# from recording.VoicePlayer import VoicePlayer
 import numpy as np
 
 # Add parent directory for env import
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gymnasium_env.envs.lab_env import LabEnv
 
 mapping = {
@@ -61,6 +64,7 @@ def play_game():
     matcher = LocalCommandMatcher()
     recorder = VoiceRecorder()
     localSTT = LocalSTT()
+    # speaker = VoicePlayer()
     
     user_text = ""
     chat_history = ["System: Ask me for tips!"]
@@ -123,6 +127,12 @@ def play_game():
         if new_msg:
             chat_history.extend(new_msg)
             print("New Message")
+            # if True:
+                # speaker.play_text(new_msg)
+        # new_audio = ai_chat.get_new_audio()
+        # if new_audio:
+        #     speaker.play_bytes(new_audio)
+        
             
         frame = env.render()
         frame = np.swapaxes(frame, 0,1)
