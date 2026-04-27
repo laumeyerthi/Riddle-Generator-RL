@@ -182,29 +182,29 @@ def main():
     print(f"{'A* Search':<20} | {succ_astar:<10.1f} | {mean_len_astar:<10.2f} | {mean_rew_astar:.2f} +/- {std_rew_astar:.2f}")
 
     # PPO Masked
-    try:
-        model_path_masked = os.path.join(os.path.dirname(__file__), "..", "ppo_masked_button_env")
-        model_masked = MaskablePPO.load(model_path_masked)
-        mean_rew_pm, std_rew_pm, mean_len_pm, succ_pm = evaluate_agent("PPO Masked Button", env, seeds_to_run, model=model_masked, is_recurrent=False)
-        print(f"{'PPO Masked':<20} | {succ_pm:<10.1f} | {mean_len_pm:<10.2f} | {mean_rew_pm:.2f} +/- {std_rew_pm:.2f}")
-    except Exception as e:
-        print(f"{'PPO Masked':<20} | {'Error loading':<10} | {'-':<10} | {str(e)}")
+    # try:
+    #     model_path_masked = os.path.join(os.path.dirname(__file__), "..", "ppo_masked_button_env")
+    #     model_masked = MaskablePPO.load(model_path_masked)
+    #     mean_rew_pm, std_rew_pm, mean_len_pm, succ_pm = evaluate_agent("PPO Masked Button", env, seeds_to_run, model=model_masked, is_recurrent=False)
+    #     print(f"{'PPO Masked':<20} | {succ_pm:<10.1f} | {mean_len_pm:<10.2f} | {mean_rew_pm:.2f} +/- {std_rew_pm:.2f}")
+    # except Exception as e:
+    #     print(f"{'PPO Masked':<20} | {'Error loading':<10} | {'-':<10} | {str(e)}")
 
     # PPO MR Curr
-    try:
-        model_path_mr = os.path.join(os.path.dirname(__file__), "..", "ppo_mr_curriculum_env")
-        model_mr = RecurrentMaskablePPO.load(model_path_mr)
-        mean_rew_mr, std_rew_mr, mean_len_mr, succ_mr = evaluate_agent("PPO MR CURR", env, seeds_to_run, model=model_mr, is_recurrent=True)
-        print(f"{'PPO MR CURR':<20} | {succ_mr:<10.1f} | {mean_len_mr:<10.2f} | {mean_rew_mr:.2f} +/- {std_rew_mr:.2f}")
-    except Exception as e:
-        print(f"{'PPO MR':<20} | {'Error loading':<10} | {'-':<10} | {str(e)}")
+    # try:
+    #     model_path_mr = os.path.join(os.path.dirname(__file__), "..", "ppo_mr_env")
+    #     model_mr = RecurrentMaskablePPO.load(model_path_mr)
+    #     mean_rew_mr, std_rew_mr, mean_len_mr, succ_mr = evaluate_agent("PPO MR CURR", env, seeds_to_run, model=model_mr, is_recurrent=True)
+    #     print(f"{'PPO MR NB':<20} | {succ_mr:<10.1f} | {mean_len_mr:<10.2f} | {mean_rew_mr:.2f} +/- {std_rew_mr:.2f}")
+    # except Exception as e:
+    #     print(f"{'PPO MR':<20} | {'Error loading':<10} | {'-':<10} | {str(e)}")
     
     # PPO MR tuned vec with button matrix
     try:
-        model_path_mr = os.path.join(os.path.dirname(__file__), "..", "ppo_mr_vec_env")
+        model_path_mr = os.path.join(os.path.dirname(__file__), "..", "alphastar_finetuned")
         model_mr = RecurrentMaskablePPO.load(model_path_mr)
         mean_rew_mr, std_rew_mr, mean_len_mr, succ_mr = evaluate_agent("PPO MR Tuned", env, seeds_to_run, model=model_mr, is_recurrent=True)
-        print(f"{'PPO MR Tuned and buttons':<20} | {succ_mr:<10.1f} | {mean_len_mr:<10.2f} | {mean_rew_mr:.2f} +/- {std_rew_mr:.2f}")
+        print(f"{'Alphastar FT 50':<20} | {succ_mr:<10.1f} | {mean_len_mr:<10.2f} | {mean_rew_mr:.2f} +/- {std_rew_mr:.2f}")
     except Exception as e:
         print(f"{'PPO MR':<20} | {'Error loading':<10} | {'-':<10} | {str(e)}")
 

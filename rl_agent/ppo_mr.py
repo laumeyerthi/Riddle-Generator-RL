@@ -14,14 +14,14 @@ from libraries.recurrent_maskable.common.evaluation import evaluate_policy
 
 #optuna hyperparameter
 para = {
-        "learning_rate": 0.00019522573640694819,
-        "n_steps": 256,
-        "batch_size": 512,
-        "n_epochs": 15,
+        "learning_rate": 7.494003701284142e-05,
+        "n_steps": 1024,
+        "batch_size": 64,
+        "n_epochs": 20,
         "gamma": 0.99,
-        "gae_lambda": 0.8,
-        "clip_range": 0.1,
-        "ent_coef": 0.0009008708576531775,
+        "gae_lambda": 0.98,
+        "clip_range": 0.4,
+        "ent_coef": 1.3230232060196722e-07,
     }
 
 class MR_TrialEvalCallback(BaseCallback):
@@ -74,7 +74,7 @@ def sample_ppo_params(trial):
 
 def objective(trial):
     kwargs = sample_ppo_params(trial)
-    num_cpu = 16
+    num_cpu = 8
     env = DummyVecEnv([make_env(i, rooms=9, seeds="train") for i in range(num_cpu)])
     eval_env = LabEnv(number_of_rooms=9, valid_seeds="eval")
 
@@ -106,7 +106,7 @@ def tune():
     storage_name = "sqlite:///my_rl_study.db"
     study = optuna.create_study(direction="maximize", 
                                 pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=3),
-                                study_name="ppo_mr_9_70",
+                                study_name="ppo_mr_9_70_1",
                                 storage=storage_name, 
                                 load_if_exists=True
                                 )
@@ -132,7 +132,7 @@ def train():
         tensorboard_log="tmp/logs/ppo_mr_agent/"
     ) 
     print("Starting Training...")
-    model.learn(total_timesteps=600000,progress_bar=True)
+    model.learn(total_timesteps=1000000,progress_bar=True)
     
     print("Saving Model...")
     model.save("ppo_mr_env")
@@ -174,7 +174,7 @@ def train_vec():
         tensorboard_log="tmp/logs/ppo_mr_agent_vec/"
     ) 
     print("Starting Vector Training...")
-    model.learn(total_timesteps=600000, progress_bar=True)
+    model.learn(total_timesteps=1000000, progress_bar=True)
     
     print("Saving Vector Model...")
     model.save("ppo_mr_vec_env")

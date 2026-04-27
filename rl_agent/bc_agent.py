@@ -9,8 +9,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gymnasium_env.envs.lab_env import LabEnv
 
-from imitation.data.types import TrajectoryWithRew
-from imitation.algorithms import bc
+
 
 def a_star_solve(unwrapped_env):
     lab = unwrapped_env.lab
@@ -114,6 +113,7 @@ def generate_expert_demonstrations(env, num_episodes=50):
             if terminated or truncated:
                 break
                 
+        from imitation.data.types import TrajectoryWithRew
         trajectories.append(
             TrajectoryWithRew(
                 obs=np.array(episode_obs),
@@ -143,6 +143,7 @@ def train():
     print("Initializing Behavioral Cloning (BC) Agent...")
     rng = np.random.default_rng()
     
+    from imitation.algorithms import bc
     bc_trainer = bc.BC(
         observation_space=env.observation_space,
         action_space=env.action_space,

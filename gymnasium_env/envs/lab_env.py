@@ -19,31 +19,31 @@ class LabEnv(gym.Env):
         self.action_space = spaces.Discrete(5 + self.max_rooms)
         
         # Observations
-        # self.observation_space = spaces.Dict({
-        #     "agent_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
-        #     "goal_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
-        #     "door_states": spaces.Box(0, 1, shape=(self.num_rooms, self.num_rooms), dtype=int),
-        #     "button_locations": spaces.Box(0, 1, shape=(self.num_rooms, self.lab.number_of_buttons), dtype=int),
-        #     "last_pos": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
-        #     "button_door_behavior": spaces.Box(0, 1, shape=(self.lab.number_of_buttons, self.num_rooms, self.num_rooms), dtype=int),
-        # })
         self.observation_space = spaces.Dict({
-            # Coordinates (using MultiDiscrete for X,Y pairs)
-            "agent_location": spaces.MultiDiscrete([self.grid_size, self.grid_size]),
-            "goal_location":  spaces.MultiDiscrete([self.grid_size, self.grid_size]),
-            "last_pos":       spaces.MultiDiscrete([self.grid_size, self.grid_size]),
-
-            # Binary Grids/Matrices (using MultiBinary for 0/1 states)
-            "door_states": spaces.MultiBinary((self.num_rooms, self.num_rooms)),
-            
-            "button_locations": spaces.MultiBinary(
-                (self.num_rooms, self.lab.number_of_buttons)
-            ),
-            
-            "button_door_behavior": spaces.MultiBinary(
-                (self.lab.number_of_buttons, self.num_rooms, self.num_rooms)
-            ),
+            "agent_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
+            "goal_location": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
+            "door_states": spaces.Box(0, 1, shape=(self.num_rooms, self.num_rooms), dtype=int),
+            "button_locations": spaces.Box(0, 1, shape=(self.num_rooms, self.lab.number_of_buttons), dtype=int),
+            "last_pos": spaces.Box(0, self.grid_size - 1, shape=(2,), dtype=int),
+            "button_door_behavior": spaces.Box(0, 1, shape=(self.lab.number_of_buttons, self.num_rooms, self.num_rooms), dtype=int),
         })
+        # self.observation_space = spaces.Dict({
+        #     # Coordinates (using MultiDiscrete for X,Y pairs)
+        #     "agent_location": spaces.MultiDiscrete([self.grid_size, self.grid_size]),
+        #     "goal_location":  spaces.MultiDiscrete([self.grid_size, self.grid_size]),
+        #     "last_pos":       spaces.MultiDiscrete([self.grid_size, self.grid_size]),
+
+        #     # Binary Grids/Matrices (using MultiBinary for 0/1 states)
+        #     "door_states": spaces.MultiBinary((self.num_rooms, self.num_rooms)),
+            
+        #     "button_locations": spaces.MultiBinary(
+        #         (self.num_rooms, self.lab.number_of_buttons)
+        #     ),
+            
+        #     "button_door_behavior": spaces.MultiBinary(
+        #         (self.lab.number_of_buttons, self.num_rooms, self.num_rooms)
+        #     ),
+        # })
         
         self.render_mode = render_mode
         agent_r, agent_c = self.lab.index_to_coord(self.lab.start_room)
@@ -207,23 +207,33 @@ class LabEnv(gym.Env):
 
     def _get_obs(self):
         goal_r, goal_c = self.lab.index_to_coord(self.lab.goal_room)
-        obs = {
+        goal_r, goal_c = self.lab.index_to_coord(self.lab.goal_room)
+        return {
             "agent_location": self.agent_location,
             "goal_location": np.array([goal_r, goal_c], dtype=int),
-            "door_states": self.lab.door_state_matrix.copy().astype(np.int8),
-            "button_locations": self.lab.button_location_matrix.copy().astype(np.int8),
+            "door_states": self.lab.door_state_matrix.copy().astype(int),
+            "button_locations": self.lab.button_location_matrix.copy().astype(int),
             "last_pos": self.last_pos,
-            "button_door_behavior": self.lab.button2door_behavior_matrix.copy().astype(np.int8),
+            "button_door_behavior": self.lab.button2door_behavior_matrix.copy().astype(int),
         }
         
-        for key, value in obs.items():
-            space = self.observation_space[key]
-            if not space.contains(value):
-                print(f"CRITICAL: {key} is out of bounds!")
-                print(f"Value: {value}")
-                print(f"Space: {space}")
+        # obs = {
+        #     "agent_location": self.agent_location,
+        #     "goal_location": np.array([goal_r, goal_c], dtype=int),
+        #     "door_states": self.lab.door_state_matrix.copy().astype(np.int8),
+        #     "button_locations": self.lab.button_location_matrix.copy().astype(np.int8),
+        #     "last_pos": self.last_pos,
+        #     "button_door_behavior": self.lab.button2door_behavior_matrix.copy().astype(np.int8),
+        # }
+        
+        # for key, value in obs.items():
+        #     space = self.observation_space[key]
+        #     if not space.contains(value):
+        #         print(f"CRITICAL: {key} is out of bounds!")
+        #         print(f"Value: {value}")
+        #         print(f"Space: {space}")
                 
-        return obs
+        # return obs
 
     def render(self):
         if self.render_mode == "human":

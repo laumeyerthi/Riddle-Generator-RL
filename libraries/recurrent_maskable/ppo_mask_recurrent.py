@@ -100,6 +100,8 @@ class RecurrentMaskablePPO(OnPolicyAlgorithm):
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         target_kl: Optional[float] = None,
+        bc_policy: Optional[BasePolicy] = None,
+        bc_kl_coef: float = 0.0,
         stats_window_size: int = 100,
         tensorboard_log: Optional[str] = None,
         policy_kwargs: Optional[Dict[str, Any]] = None,
@@ -141,6 +143,8 @@ class RecurrentMaskablePPO(OnPolicyAlgorithm):
         self.clip_range_vf = clip_range_vf
         self.normalize_advantage = normalize_advantage
         self.target_kl = target_kl
+        self.bc_policy = bc_policy
+        self.bc_kl_coef = bc_kl_coef
         self._last_lstm_states = None
 
         if _init_setup_model:
@@ -428,6 +432,7 @@ class RecurrentMaskablePPO(OnPolicyAlgorithm):
 
         entropy_losses = []
         pg_losses, value_losses = [], []
+        bc_kl_losses = []
         clip_fractions = []
 
         continue_training = True
@@ -501,6 +506,21 @@ class RecurrentMaskablePPO(OnPolicyAlgorithm):
                 entropy_losses.append(entropy_loss.item())
 
                 loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+                
+                # BC KL Penalty (AlphaStar style)
+                if self.bc_policy is not None and self.bc_kl_coef > 0.0:
+                    with th.no_grad():
+                        _, bc_log_prob, _ = self.bc_policy.evaluate_actions(
+                            rollout_data.observations,
+                            actions,
+                            rollout_data.lstm_states, # use current states as approx for BC states
+                            rollout_data.episode_starts,
+                            action_masks=rollout_data.action_masks,
+                        )
+                    bc_log_ratio = log_prob - bc_log_prob
+                    bc_approx_kl_div = th.mean(((th.exp(bc_log_ratio) - 1) - bc_log_ratio)[mask])
+                    loss += self.bc_kl_coef * bc_approx_kl_div
+                    bc_kl_losses.append(bc_approx_kl_div.item())
 
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
@@ -535,6 +555,8 @@ class RecurrentMaskablePPO(OnPolicyAlgorithm):
         self.logger.record("train/policy_gradient_loss", np.mean(pg_losses))
         self.logger.record("train/value_loss", np.mean(value_losses))
         self.logger.record("train/approx_kl", np.mean(approx_kl_divs))
+        if len(bc_kl_losses) > 0:
+            self.logger.record("train/bc_approx_kl", np.mean(bc_kl_losses))
         self.logger.record("train/clip_fraction", np.mean(clip_fractions))
         self.logger.record("train/loss", loss.item())
         self.logger.record("train/explained_variance", explained_var)
