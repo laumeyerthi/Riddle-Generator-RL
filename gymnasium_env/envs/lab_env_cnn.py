@@ -25,7 +25,7 @@ class LabEnvCNN(LabEnv):
             low=0, high=1, 
             shape=(self.num_channels, self.spatial_size, self.spatial_size), 
             dtype=np.float32
-        )
+        ) 
 
     def _get_obs(self):
         obs = np.zeros((self.num_channels, self.spatial_size, self.spatial_size), dtype=np.float32)

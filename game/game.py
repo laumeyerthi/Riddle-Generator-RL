@@ -11,6 +11,7 @@ from matcher.localCommandMatcher import LocalCommandMatcher
 from recording.VoiceRecorder import VoiceRecorder
 # from recording.VoicePlayer import VoicePlayer
 import numpy as np
+from fastapi.request import play_scotty_voice
 
 # Add parent directory for env import
 from gymnasium_env.envs.lab_env import LabEnv
@@ -46,10 +47,11 @@ def wrap_text(text, font, max_width):
         lines.append(' '.join(current_line))
     return lines
 
-def play_game():
+def play_game(agent_type="alphastar"):
     env = LabEnv(number_of_rooms=9 ,render_mode="rgb_array")
-    ai_chat = AIChatBot()
+    ai_chat = AIChatBot(agent_type=agent_type)
     observation, info = env.reset()
+    ai_chat.reset_agent_state()
     
     pygame.init()
     frame = env.render() 
@@ -101,11 +103,13 @@ def play_game():
                 if event.key in mapping:
                     current_action = mapping[event.key]
             
+                    # ai_chat.update_agent_state(current_state, env.action_masks())
                     current_state, reward, terminated, truncated, info = env.step(current_action)
 
                     if(terminated or truncated):
                         print("Game Over! Resetting...")
                         current_state, info = env.reset()
+                        ai_chat.reset_agent_state()
         elif event.type == pygame.KEYUP:
             if event.key == pygame.K_v and is_recording:
                 is_recording = False
@@ -126,9 +130,9 @@ def play_game():
         new_msg = ai_chat.get_new_messages()
         if new_msg:
             chat_history.extend(new_msg)
-            print("New Message")
-            # if True:
+            if True:
                 # speaker.play_text(new_msg)
+                play_scotty_voice(new_msg)
         # new_audio = ai_chat.get_new_audio()
         # if new_audio:
         #     speaker.play_bytes(new_audio)

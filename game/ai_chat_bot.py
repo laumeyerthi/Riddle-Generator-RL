@@ -4,6 +4,8 @@ from google import genai
 from google.genai import types
 from llm_interface.ppo_interface import PPOInterface
 from llm_interface.ppo_masked_interface import PPOMaskedInterface
+from llm_interface.alphastar_interface import AlphastarInterface
+from llm_interface.ppo_mr_interface import PPOMRInterface
 from dotenv import load_dotenv
 import os
 
@@ -12,15 +14,25 @@ load_dotenv()
 API_KEY=os.getenv("GEMINI_API_KEY")
 
 class AIChatBot:
-    def __init__(self):
+    def __init__(self, agent_type="alphastar"):
         self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
         self.audio_queue = queue.Queue()
         self.running = True
         self.latest_game_state = {}
         self.current_mask = None
-        #self.interface = PPOInterface()
-        self.interface_mask = PPOMaskedInterface()
+        self.agent_type = agent_type
+        
+        if agent_type == "ppo":
+            self.interface = PPOInterface()
+        elif agent_type == "ppo_masked":
+            self.interface = PPOMaskedInterface()
+        elif agent_type == "ppo_mr":
+            self.interface = PPOMRInterface()
+        elif agent_type == "alphastar":
+            self.interface = AlphastarInterface()
+        else:
+            raise ValueError(f"Unknown agent type: {agent_type}")
         if not API_KEY:
             raise ValueError("GEMINI_API_KEY not found! Check your .env file.")
         self.client = genai.Client(api_key=API_KEY)
@@ -33,6 +45,14 @@ class AIChatBot:
         self.input_queue.put(user_text)
         if(mask is not None):
             self.current_mask = mask
+            
+    def update_agent_state(self, game_state, mask=None):
+        if hasattr(self.interface, "update_state"):
+            self.interface.update_state(game_state, mask)
+            
+    def reset_agent_state(self):
+        if hasattr(self.interface, "reset_state"):
+            self.interface.reset_state()
         
     def get_new_messages(self):
         messages = []
@@ -85,24 +105,47 @@ class AIChatBot:
                         Instruction: You are a helpful game copilot to a labirynth game. You have the results from an ppo rl agent trained on the game. Keep advice short (under 2 sentences). The actions are in order right, up, left, down, backtrack, button1, button2, button3 and button4.
                         """
                 else:
-                    context_str = f"""
-                        [SYSTEM CONTEXT]
-                        Current Game State: {self.latest_game_state}
-                        Current Allowed Actions: {self.current_mask}
-                        Current Action Prediction : {self.interface_mask.get_action(self.latest_game_state, self.current_mask)}
-                        Current Action Propabilities: {self.interface_mask.get_action_probs(self.latest_game_state)}
-                        Current Advantages : {self.interface_mask.get_winning_probs(self.latest_game_state)}
-                        User Input: {user_text}
+                    # context_str = f"""
+                    #     [SYSTEM CONTEXT]
+                    #     Current Game State: {self.latest_game_state}
+                    #     Current Allowed Actions: {self.current_mask}
+                    #     Current Action Prediction : {self.interface.get_action(self.latest_game_state, self.current_mask)}
+                    #     User Input: {user_text}
                         
-                        Instruction: You are a helpful game copilot to a labirynth game. You have the results from an ppo rl agent trained on the game. Keep advice short (under 2 sentences). The actions are in order right, up, left, down, backtrack, button1, button2, button3 and button4.
+                    #     Instruction: You are a helpful game copilot to a labirynth game. You have the results from an ppo rl agent trained on the game. Keep advice short (under 2 sentences). The actions are in order right, up, left, down, backtrack, button1, button2, button3 and button4.
+                    #     """
+                    # Current Action Prediction : {self.interface.get_action(self.latest_game_state, self.current_mask)}
+                    # Current Action Propabilities: {self.interface.get_action_probs(self.latest_game_state, self.current_mask)} 
+                    # Current Advantages : {self.interface.get_winning_probs(self.latest_game_state)}
+                    context_str = f"""
+                        ### SYSTEM ROLE
+                        You are Montgomery "Scotty" Scott, Chief Engineer. You are the user's copilot in a high-stakes labyrinth.
+                        Your personality: Loyal, technical, Scottish-accented, and slightly stressed about "the engines."
+                        Your goal: Interpret the "Navigation Computer" (an RL agent) to guide the Captain (the user).
+
+                        ### SENSOR DATA
+                        Current Labyrinth Sector: {self.latest_game_state}
+                        Functional Thrusters (Allowed Actions): {self.current_mask}
+                        Navigation Computer Suggestion: {self.interface.get_action(self.latest_game_state, self.current_mask)}
+
+                        ### NAV-COMPUTER KEY
+                        0:Right, 1:Up, 2:Left, 3:Down, 4:Backtrack, 5-8:Buttons 1-4
+
+                        ### USER TRANSMISSION
+                        "{user_text}"
+
+                        ### INSTRUCTIONS
+                        1. Keep advice under 2 sentences. 
+                        2. Use Star Trek engineering slang (e.g., "dilithium crystals," "transporters," "aye captain," "laddie").
+                        3. Use Paralinguistic Tags like [clear throat], [sigh], [shush], [cough], [groan], [sniff], [gasp], [laugh], or [chuckle] to add emotion for the TTS.
+                        4. Translate the Navigation Computer Suggestion into a natural recommendation.
                         """
-                                
                 response = chat.send_message(context_str)
                    
                 ai_text = response.text
                 if ai_text:
                     clean_text = ai_text.strip().replace("**", "")
-                    self.output_queue.put(f"Gemini: {clean_text}")
+                    self.output_queue.put(f"{clean_text}")
                     
                 if response.candidates and response.candidates[0].content.parts:
                     for part in response.candidates[0].content.parts:

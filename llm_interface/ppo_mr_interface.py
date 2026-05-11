@@ -1,10 +1,14 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../libraries/recurrent_maskable')))
+
 import torch
-from sb3_contrib import MaskablePPO
+from libraries.recurrent_maskable.ppo_mask_recurrent import RecurrentMaskablePPO
 import numpy as np
 
-class PPOMaskedInterface:
+class PPOMRInterface:
     def __init__(self):
-        self.model = MaskablePPO.load("ppo_masked_lab_env")
+        self.model = RecurrentMaskablePPO.load("ppo_mr_env_NB_B")
         self.current_lstm_states = None
         self.episode_starts = np.ones((1,), dtype=bool)
 
@@ -28,7 +32,8 @@ class PPOMaskedInterface:
     
     def update_state(self,obs, action_mask):
         with torch.no_grad():
-            _, self.current_lstm_states = self.model.predict(obs, action_mask,state=self.current_lstm_states, episode_start=self.episode_starts deterministic=True)
+            _, self.current_lstm_states = self.model.predict(obs, action_masks=action_mask, state=self.current_lstm_states, episode_start=self.episode_starts, deterministic=True)
+            self.episode_starts = np.zeros((1,), dtype=bool)
         
     def reset_state(self):
         self.episode_starts = np.ones((1,), dtype=bool)

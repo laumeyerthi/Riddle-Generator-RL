@@ -201,12 +201,20 @@ def main():
     
     # PPO MR tuned vec with button matrix
     try:
-        model_path_mr = os.path.join(os.path.dirname(__file__), "..", "alphastar_finetuned")
+        model_path_mr = os.path.join(os.path.dirname(__file__), "..", "alphastar_transformer_finetuned")
         model_mr = RecurrentMaskablePPO.load(model_path_mr)
         mean_rew_mr, std_rew_mr, mean_len_mr, succ_mr = evaluate_agent("PPO MR Tuned", env, seeds_to_run, model=model_mr, is_recurrent=True)
         print(f"{'Alphastar FT 50':<20} | {succ_mr:<10.1f} | {mean_len_mr:<10.2f} | {mean_rew_mr:.2f} +/- {std_rew_mr:.2f}")
     except Exception as e:
         print(f"{'PPO MR':<20} | {'Error loading':<10} | {'-':<10} | {str(e)}")
+
+    try:
+        model_path_bc = os.path.join(os.path.dirname(__file__), "..", "alphastar_transformer_bc_pretrained")
+        model_bc = RecurrentMaskablePPO.load(model_path_bc)
+        mean_rew_bc, std_rew_bc, mean_len_bc, succ_bc = evaluate_agent("Transformer BC", env, seeds_to_run, model=model_bc, is_recurrent=True)
+        print(f"{'Alphastar TF BC':<20} | {succ_bc:<10.1f} | {mean_len_bc:<10.2f} | {mean_rew_bc:.2f} +/- {std_rew_bc:.2f}")
+    except Exception as e:
+        print(f"{'Alphastar TF BC':<20} | {'Error loading':<10} | {'-':<10} | {str(e)}")
 
     print("-" * 65)
 

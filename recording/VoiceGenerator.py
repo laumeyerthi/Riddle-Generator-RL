@@ -2,6 +2,10 @@
 import torchaudio
 import torch
 import soundfile as sf
+import perth
+
+if perth.PerthImplicitWatermarker is None:
+    perth.PerthImplicitWatermarker = perth.DummyWatermarker
 
 # Monkey-patch torchaudio.load and torchaudio.save to use soundfile instead of torchcodec
 # since torchaudio 2.11+ restricts backend routing and might fail due to torchcodec DLL issues on Windows.
@@ -22,29 +26,35 @@ def _soundfile_save(filepath, tensor, sample_rate, **kwargs):
 torchaudio.load = _soundfile_load
 torchaudio.save = _soundfile_save
 
-from f5_tts.api import F5TTS
+from chatterbox.tts_turbo import ChatterboxTurboTTS
 import sounddevice as sd
 
 class VoiceGenerator:
     
     def __init__(self):
-        print("Loading F5-TTS model... (This may take a moment on first run)")
-        self.tts = F5TTS() 
+        print("Loading Chatterbox Turbo TTS model... (This may take a moment on first run)")
+        self.tts = ChatterboxTurboTTS.from_pretrained('cuda' if torch.cuda.is_available() else 'cpu') 
         
         self.ref_audio = r"C:\Users\Leon\Desktop\TUM\Master AI\Master Thesis\Riddle-Generator-RL\voicelines\scooty_scott_uncleaned.wav"
         
+        # f5tts needed this
         self.ref_text = "Laddy, I was drinking scotch a hundred years before you were born, and I can tell you that whatever this is, it is definitely not scotch."
 
     def speak_custom(self, text):
-        audio_data, sample_rate, _ = self.tts.infer(
-            ref_file=self.ref_audio,
-            ref_text=self.ref_text,
-            gen_text=text
+        audio_tensor = self.tts.generate(
+            text=text,
+            audio_prompt_path=self.ref_audio
         )
+        sample_rate = 24000 
+        
+        if isinstance(audio_tensor, torch.Tensor):
+            audio_data = audio_tensor.squeeze().cpu().numpy()
+        else:
+            audio_data = audio_tensor
         
         sd.play(audio_data, sample_rate)
         
-        self.save_audio(audio_data, sample_rate, "voice_response.wav")
+        self.save_audio(audio_tensor, sample_rate, "voice_response.wav")
 
     def save_audio(self, audio_data, sample_rate, filename):
         """Saves audio data whether it's a Torch Tensor or a NumPy Array."""
@@ -62,7 +72,7 @@ class VoiceGenerator:
             
             # 3. Save
             torchaudio.save(filename, audio_to_save, sample_rate)
-            print(f"✅ Scotty's voice saved to: {filename}")
+            print(f"[SUCCESS] Scotty's voice saved to: {filename}")
             
         except Exception as e:
-            print(f"❌ Failed to save audio: {e}")
+            print(f"[ERROR] Failed to save audio: {e}")
